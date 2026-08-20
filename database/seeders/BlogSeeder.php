@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Admin;
 use App\Models\Blog;
 use App\Models\Category;
 use App\Models\Tag;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,38 +17,24 @@ class BlogSeeder extends Seeder
     {
         /*
         |--------------------------------------------------------------------------
-        | DELETE OLD BLOG TEST DATA
+        | GET ADMIN
         |--------------------------------------------------------------------------
         */
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        $admin = Admin::where('email', 'admin@example.com')->first();
 
-        DB::table('blog_tag')->truncate();
-        DB::table('blog_views')->truncate();
-        DB::table('likes')->truncate();
-        DB::table('comments')->truncate();
-        DB::table('blogs')->truncate();
+        if (!$admin) {
+            $this->command?->error(
+                'Admin not found. Please run AdminSeeder first.'
+            );
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            return;
+        }
 
 
         /*
         |--------------------------------------------------------------------------
-        | DELETE OLD SEEDED IMAGES ONLY
-        |--------------------------------------------------------------------------
-        |
-        | Ye manually uploaded admin images ko delete nahi karega.
-        | Sirf BlogSeeder se generate hui images delete hongi.
-        |
-        */
-
-        Storage::disk('public')
-            ->deleteDirectory('blogs/seeded');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE IMAGE DIRECTORIES
+        | CREATE SEEDED IMAGE DIRECTORIES
         |--------------------------------------------------------------------------
         */
 
@@ -127,7 +113,6 @@ class BlogSeeder extends Seeder
         ];
 
         foreach ($tagData as $tag) {
-
             Tag::firstOrCreate(
                 [
                     'slug' => $tag['slug'],
@@ -148,127 +133,102 @@ class BlogSeeder extends Seeder
         */
 
         $blogs = [
-
             [
                 'title' => 'Getting Started with Laravel',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Laravel Routing Explained',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Understanding Laravel Controllers',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Laravel Blade Template Guide',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Laravel Eloquent ORM Tutorial',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Building Authentication in Laravel',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Laravel Middleware Explained',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Laravel Validation Best Practices',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Working with Laravel Migrations',
                 'category' => $database,
             ],
-
             [
                 'title' => 'Laravel Relationships Explained',
                 'category' => $database,
             ],
-
             [
                 'title' => 'PHP Basics for Beginners',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Object Oriented Programming in PHP',
                 'category' => $development,
             ],
-
             [
                 'title' => 'PHP Arrays Complete Guide',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Understanding PHP Functions',
                 'category' => $development,
             ],
-
             [
                 'title' => 'PHP Error Handling Best Practices',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Modern Web Development Guide',
                 'category' => $technology,
             ],
-
             [
                 'title' => 'Frontend vs Backend Development',
                 'category' => $technology,
             ],
-
             [
                 'title' => 'How REST APIs Work',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Understanding MVC Architecture',
                 'category' => $development,
             ],
-
             [
                 'title' => 'Database Design Best Practices',
                 'category' => $database,
             ],
-
             [
                 'title' => 'Introduction to MySQL',
                 'category' => $database,
             ],
-
             [
                 'title' => 'MySQL Joins Explained',
                 'category' => $database,
             ],
-
             [
                 'title' => 'How to Optimize SQL Queries',
                 'category' => $database,
             ],
-
             [
                 'title' => 'Git and GitHub for Developers',
                 'category' => $technology,
             ],
-
             [
                 'title' => 'How to Become a Full Stack Developer',
                 'category' => $technology,
@@ -278,7 +238,7 @@ class BlogSeeder extends Seeder
 
         /*
         |--------------------------------------------------------------------------
-        | CREATE BLOGS
+        | CREATE / UPDATE BLOGS
         |--------------------------------------------------------------------------
         */
 
@@ -291,200 +251,220 @@ class BlogSeeder extends Seeder
 
             /*
             |--------------------------------------------------------------------------
-            | DOWNLOAD THUMBNAIL
+            | IMAGE PATHS
             |--------------------------------------------------------------------------
             */
 
-            $thumbnailPath = $this->downloadImage(
-                'https://picsum.photos/seed/' .
-                $slug .
-                '-thumbnail/800/500',
-
+            $thumbnailFile =
                 'blogs/seeded/thumbnails/' .
                 $slug .
-                '.jpg'
-            );
+                '.jpg';
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | DOWNLOAD BANNER
-            |--------------------------------------------------------------------------
-            */
-
-            $bannerPath = $this->downloadImage(
-                'https://picsum.photos/seed/' .
-                $slug .
-                '-banner/1400/700',
-
+            $bannerFile =
                 'blogs/seeded/banners/' .
                 $slug .
-                '.jpg'
-            );
+                '.jpg';
 
 
             /*
             |--------------------------------------------------------------------------
-            | CREATE BLOG
+            | DOWNLOAD THUMBNAIL ONLY IF NOT EXISTS
             |--------------------------------------------------------------------------
             */
 
-            $blog = Blog::create([
+            if (!Storage::disk('public')->exists($thumbnailFile)) {
 
-                'admin_id' => 1,
+                $thumbnailPath = $this->downloadImage(
+                    'https://picsum.photos/seed/' .
+                    $slug .
+                    '-thumbnail/800/500',
 
-                'category_id' => $item['category']->id,
+                    $thumbnailFile
+                );
 
-                'title' => $title,
+            } else {
 
-                'slug' => $slug,
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | DESCRIPTION
-                |--------------------------------------------------------------------------
-                */
-
-                'description' =>
-                    'A practical and beginner-friendly guide to ' .
-                    $title .
-                    '. Learn important concepts with examples and best practices.',
+                $thumbnailPath = $thumbnailFile;
+            }
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | BLOG CONTENT
-                |--------------------------------------------------------------------------
-                */
+            /*
+            |--------------------------------------------------------------------------
+            | DOWNLOAD BANNER ONLY IF NOT EXISTS
+            |--------------------------------------------------------------------------
+            */
 
-                'content' => '
+            if (!Storage::disk('public')->exists($bannerFile)) {
 
-                    <h2>Introduction</h2>
+                $bannerPath = $this->downloadImage(
+                    'https://picsum.photos/seed/' .
+                    $slug .
+                    '-banner/1400/700',
 
-                    <p>
-                        Welcome to this complete guide on ' . $title . '.
-                        In this article we will understand the main concepts
-                        in a simple and practical way.
-                    </p>
+                    $bannerFile
+                );
 
+            } else {
 
-                    <h2>Why This Topic Matters</h2>
-
-                    <p>
-                        Understanding this topic can help developers build
-                        cleaner, faster and more maintainable applications.
-                    </p>
+                $bannerPath = $bannerFile;
+            }
 
 
-                    <h2>Main Concepts</h2>
+            /*
+            |--------------------------------------------------------------------------
+            | DESCRIPTION
+            |--------------------------------------------------------------------------
+            */
 
-                    <p>
-                        We will cover important fundamentals, common
-                        development patterns and useful implementation ideas.
-                    </p>
-
-
-                    <h3>Practical Example</h3>
-
-                    <p>
-                        This section represents realistic article content
-                        used for testing the BlogSpace application.
-                    </p>
+            $description =
+                'A practical and beginner-friendly guide to ' .
+                $title .
+                '. Learn important concepts with examples and best practices.';
 
 
-                    <h2>Best Practices</h2>
+            /*
+            |--------------------------------------------------------------------------
+            | BLOG CONTENT
+            |--------------------------------------------------------------------------
+            */
 
-                    <p>
-                        Always follow clean coding standards, validation,
-                        security practices and proper project organization.
-                    </p>
+            $content = '
 
+                <h2>Introduction</h2>
 
-                    <h2>Conclusion</h2>
-
-                    <p>
-                        This guide gives you a strong introduction to
-                        ' . $title . ' and can be used as a foundation
-                        for further learning.
-                    </p>
-                ',
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | REAL IMAGE PATHS
-                |--------------------------------------------------------------------------
-                */
-
-                'thumbnail' => $thumbnailPath,
-
-                'banner' => $bannerPath,
+                <p>
+                    Welcome to this complete guide on ' .
+                    e($title) .
+                    '.
+                    In this article we will understand the main concepts
+                    in a simple and practical way.
+                </p>
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | SEO
-                |--------------------------------------------------------------------------
-                */
+                <h2>Why This Topic Matters</h2>
 
-                'seo_title' =>
-                    $title . ' | BlogSpace',
-
-                'seo_description' =>
-                    'Learn ' .
-                    $title .
-                    ' with practical examples, explanations and best practices.',
-
-                'canonical_tag' =>
-                    'http://127.0.0.1:8000/blogs/' .
-                    $slug,
+                <p>
+                    Understanding this topic can help developers build
+                    cleaner, faster and more maintainable applications.
+                </p>
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | SCHEMA MARKUP
-                |--------------------------------------------------------------------------
-                */
+                <h2>Main Concepts</h2>
 
-                'schema_markup' => json_encode(
-                    [
-                        '@context' => 'https://schema.org',
+                <p>
+                    We will cover important fundamentals, common
+                    development patterns and useful implementation ideas.
+                </p>
 
-                        '@type' => 'Article',
 
-                        'headline' => $title,
+                <h3>Practical Example</h3>
 
-                        'author' => [
-                            '@type' => 'Person',
-                            'name' => 'Admin',
+                <p>
+                    This section represents realistic article content
+                    used for testing the BlogSpace application.
+                </p>
+
+
+                <h2>Best Practices</h2>
+
+                <p>
+                    Always follow clean coding standards, validation,
+                    security practices and proper project organization.
+                </p>
+
+
+                <h2>Conclusion</h2>
+
+                <p>
+                    This guide gives you a strong introduction to ' .
+                    e($title) .
+                    ' and can be used as a foundation
+                    for further learning.
+                </p>
+            ';
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | CREATE OR UPDATE BLOG
+            |--------------------------------------------------------------------------
+            */
+
+            $blog = Blog::updateOrCreate(
+                [
+                    'slug' => $slug,
+                ],
+                [
+                    'admin_id' => $admin->id,
+
+                    'category_id' => $item['category']->id,
+
+                    'title' => $title,
+
+                    'description' => $description,
+
+                    'content' => $content,
+
+                    'thumbnail' => $thumbnailPath,
+
+                    'banner' => $bannerPath,
+
+                    'seo_title' =>
+                        $title .
+                        ' | BlogSpace',
+
+                    'seo_description' =>
+                        'Learn ' .
+                        $title .
+                        ' with practical examples, explanations and best practices.',
+
+                    'canonical_tag' =>
+                        url('/blogs/' . $slug),
+
+                    'schema_markup' => json_encode(
+                        [
+                            '@context' => 'https://schema.org',
+
+                            '@type' => 'Article',
+
+                            'headline' => $title,
+
+                            'description' => $description,
+
+                            'author' => [
+                                '@type' => 'Person',
+                                'name' => $admin->name ?? 'Admin',
+                            ],
+
+                            'url' =>
+                                url('/blogs/' . $slug),
                         ],
-                    ],
-                    JSON_UNESCAPED_SLASHES
-                ),
+                        JSON_UNESCAPED_SLASHES
+                    ),
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | DIFFERENT VIEWS FOR TESTING
+                    |--------------------------------------------------------------------------
+                    */
 
-                /*
-                |--------------------------------------------------------------------------
-                | TESTING VIEWS
-                |--------------------------------------------------------------------------
-                */
+                    'views' =>
+                        25 + (($index + 1) * 11),
 
-                'views' => rand(10, 300),
+                    /*
+                    |--------------------------------------------------------------------------
+                    | DATES
+                    |--------------------------------------------------------------------------
+                    */
 
+                    'created_at' =>
+                        now()->subDays(
+                            count($blogs) - $index
+                        ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | DATES
-                |--------------------------------------------------------------------------
-                */
-
-                'created_at' =>
-                    now()->subDays(25 - $index),
-
-                'updated_at' =>
-                    now(),
-            ]);
+                    'updated_at' => now(),
+                ]
+            );
 
 
             /*
@@ -493,19 +473,45 @@ class BlogSeeder extends Seeder
             |--------------------------------------------------------------------------
             */
 
-            $selectedTags = $tags
-                ->random(
-                    rand(
-                        1,
-                        min(3, $tags->count())
-                    )
-                )
-                ->pluck('id')
-                ->toArray();
+            if ($tags->isNotEmpty()) {
+
+                $maxTags = min(
+                    3,
+                    $tags->count()
+                );
+
+                $tagCount = rand(
+                    1,
+                    $maxTags
+                );
+
+                $selectedTags = $tags
+                    ->random($tagCount)
+                    ->pluck('id')
+                    ->toArray();
+
+                $blog->tags()
+                    ->sync($selectedTags);
+            }
 
 
-            $blog->tags()->sync($selectedTags);
+            $this->command?->info(
+                'Blog seeded: ' .
+                $title
+            );
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | SUCCESS
+        |--------------------------------------------------------------------------
+        */
+
+        $this->command?->info(
+            count($blogs) .
+            ' test blogs created/updated successfully.'
+        );
     }
 
 
@@ -524,34 +530,36 @@ class BlogSeeder extends Seeder
 
             $response = Http::withOptions([
                     'allow_redirects' => true,
-
-                    // Local Windows development ke liye.
-                    // Production me verify false remove kar dena.
-                    'verify' => false,
                 ])
                 ->timeout(30)
-                ->retry(2, 500)
+                ->retry(
+                    2,
+                    500
+                )
                 ->get($url);
 
 
             if (!$response->successful()) {
 
                 $this->command?->warn(
-                    'Image download failed: ' . $url
+                    'Image download failed: ' .
+                    $url
                 );
 
                 return null;
             }
 
 
-            Storage::disk('public')->put(
-                $path,
-                $response->body()
-            );
+            Storage::disk('public')
+                ->put(
+                    $path,
+                    $response->body()
+                );
 
 
             $this->command?->info(
-                'Image saved: ' . $path
+                'Image saved: ' .
+                $path
             );
 
 
@@ -560,7 +568,8 @@ class BlogSeeder extends Seeder
         } catch (\Throwable $e) {
 
             $this->command?->warn(
-                'Image error: ' . $e->getMessage()
+                'Image error: ' .
+                $e->getMessage()
             );
 
             return null;
