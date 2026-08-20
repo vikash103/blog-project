@@ -7,9 +7,11 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libpng-dev \
     libonig-dev \
+    libpq-dev \
     default-mysql-client \
     && docker-php-ext-install \
     pdo_mysql \
+    pdo_pgsql \
     mbstring \
     zip \
     exif \
