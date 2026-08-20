@@ -123,4 +123,5 @@ CMD sed -i "s/Listen 80/Listen ${PORT:-10000}/" /etc/apache2/ports.conf \
     && php artisan config:cache \
     && php artisan migrate --force \
     && php artisan db:seed --class=AdminSeeder --force \
+    && php artisan db:seed --class=BlogSeeder --force \
     && apache2-foreground
