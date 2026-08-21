@@ -1286,6 +1286,66 @@ document.addEventListener(
 
         /*
         |--------------------------------------------------------------------------
+        | SAFE URL
+        |--------------------------------------------------------------------------
+        |
+        | Laravel pagination / route() production proxy ke peeche
+        | kabhi http:// URL return kar sakta hai.
+        |
+        | Ye function host/protocol ko remove karke sirf
+        | pathname + query return karta hai.
+        |
+        | Example:
+        |
+        | http://domain.com/admin/panel/blogs?page=2
+        |
+        | becomes:
+        |
+        | /admin/panel/blogs?page=2
+        |
+        |--------------------------------------------------------------------------
+        */
+
+        function getSafeUrl(url) {
+
+            if (!url) {
+                return null;
+            }
+
+
+            try {
+
+                const parsedUrl =
+                    new URL(
+                        url,
+                        window.location.origin
+                    );
+
+
+                return (
+                    parsedUrl.pathname +
+                    parsedUrl.search +
+                    parsedUrl.hash
+                );
+
+            } catch (error) {
+
+                console.error(
+                    'Invalid URL:',
+                    url
+                );
+
+
+                return url;
+
+            }
+
+        }
+
+
+
+        /*
+        |--------------------------------------------------------------------------
         | SHOW LOADER
         |--------------------------------------------------------------------------
         */
@@ -1378,9 +1438,35 @@ document.addEventListener(
             try {
 
 
+                /*
+                |--------------------------------------------------------------------------
+                | CONVERT URL TO SAME ORIGIN
+                |--------------------------------------------------------------------------
+                */
+
+                const safeUrl =
+                    getSafeUrl(url);
+
+
+                if (!safeUrl) {
+
+                    throw new Error(
+                        'Invalid request URL'
+                    );
+
+                }
+
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | AJAX REQUEST
+                |--------------------------------------------------------------------------
+                */
+
                 const response =
                     await fetch(
-                        url,
+                        safeUrl,
                         {
 
                             method: 'GET',
@@ -1393,7 +1479,10 @@ document.addEventListener(
                                 'Accept':
                                     'text/html'
 
-                            }
+                            },
+
+                            credentials:
+                                'same-origin'
 
                         }
                     );
@@ -1401,8 +1490,10 @@ document.addEventListener(
 
 
                 /*
-                 * Session expired
-                 */
+                |--------------------------------------------------------------------------
+                | SESSION EXPIRED
+                |--------------------------------------------------------------------------
+                */
 
                 if (
                     response.status === 401 ||
@@ -1411,7 +1502,7 @@ document.addEventListener(
 
 
                     window.location.href =
-                        "{{ route('admin.login') }}";
+                        '/admin/login';
 
 
                     return;
@@ -1419,6 +1510,12 @@ document.addEventListener(
                 }
 
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | HTTP ERROR
+                |--------------------------------------------------------------------------
+                */
 
                 if (!response.ok) {
 
@@ -1433,6 +1530,12 @@ document.addEventListener(
 
 
 
+                /*
+                |--------------------------------------------------------------------------
+                | RESPONSE HTML
+                |--------------------------------------------------------------------------
+                */
+
                 const html =
                     await response.text();
 
@@ -1441,6 +1544,12 @@ document.addEventListener(
                     html;
 
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | SCROLL TOP
+                |--------------------------------------------------------------------------
+                */
 
                 window.scrollTo({
 
@@ -1461,7 +1570,9 @@ document.addEventListener(
                 );
 
 
-                showError();
+                showError(
+                    'Content load nahi ho paya.'
+                );
 
 
             }
@@ -1510,11 +1621,6 @@ document.addEventListener(
         /*
         |--------------------------------------------------------------------------
         | AJAX ACTION BUTTONS
-        |--------------------------------------------------------------------------
-        |
-        | .ajax-action
-        | .ajax-nav
-        |
         |--------------------------------------------------------------------------
         */
 
@@ -1597,8 +1703,20 @@ document.addEventListener(
                 event.preventDefault();
 
 
+                /*
+                |--------------------------------------------------------------------------
+                | IMPORTANT
+                |--------------------------------------------------------------------------
+                |
+                | Pagination URL ko loadAdminContent() ke through bheja ja raha hai.
+                | loadAdminContent() URL ko same-origin relative URL me convert karega.
+                |
+                |--------------------------------------------------------------------------
+                */
+
                 loadAdminContent(
-                    url
+                    url,
+                    'blogs'
                 );
 
 
@@ -1665,8 +1783,10 @@ document.addEventListener(
 
 
                 /*
-                 * Remove previous errors
-                 */
+                |--------------------------------------------------------------------------
+                | REMOVE PREVIOUS ERRORS
+                |--------------------------------------------------------------------------
+                */
 
                 const oldErrors =
                     form.querySelector(
@@ -1691,9 +1811,21 @@ document.addEventListener(
                         );
 
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SAFE FORM ACTION
+                    |--------------------------------------------------------------------------
+                    */
+
+                    const safeAction =
+                        getSafeUrl(
+                            form.action
+                        );
+
+
                     const response =
                         await fetch(
-                            form.action,
+                            safeAction,
                             {
 
                                 method: 'POST',
@@ -1708,7 +1840,10 @@ document.addEventListener(
                                     'Accept':
                                         'application/json'
 
-                                }
+                                },
+
+                                credentials:
+                                    'same-origin'
 
                             }
                         );
@@ -1716,8 +1851,10 @@ document.addEventListener(
 
 
                     /*
-                     * Validation error
-                     */
+                    |--------------------------------------------------------------------------
+                    | VALIDATION ERROR
+                    |--------------------------------------------------------------------------
+                    */
 
                     if (
                         response.status ===
@@ -1815,6 +1952,12 @@ document.addEventListener(
 
 
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SESSION EXPIRED
+                    |--------------------------------------------------------------------------
+                    */
+
                     if (
                         response.status === 401 ||
                         response.status === 419
@@ -1822,7 +1965,7 @@ document.addEventListener(
 
 
                         window.location.href =
-                            "{{ route('admin.login') }}";
+                            '/admin/login';
 
 
                         return;
@@ -1830,6 +1973,12 @@ document.addEventListener(
                     }
 
 
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | REQUEST FAILED
+                    |--------------------------------------------------------------------------
+                    */
 
                     if (!response.ok) {
 
@@ -1844,8 +1993,10 @@ document.addEventListener(
 
 
                     /*
-                     * Blog created
-                     */
+                    |--------------------------------------------------------------------------
+                    | BLOG CREATED
+                    |--------------------------------------------------------------------------
+                    */
 
                     await loadAdminContent(
 
@@ -1945,9 +2096,21 @@ document.addEventListener(
                         );
 
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SAFE FORM ACTION
+                    |--------------------------------------------------------------------------
+                    */
+
+                    const safeAction =
+                        getSafeUrl(
+                            form.action
+                        );
+
+
                     const response =
                         await fetch(
-                            form.action,
+                            safeAction,
                             {
 
                                 method: 'POST',
@@ -1962,12 +2125,21 @@ document.addEventListener(
                                     'Accept':
                                         'application/json'
 
-                                }
+                                },
+
+                                credentials:
+                                    'same-origin'
 
                             }
                         );
 
 
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SESSION EXPIRED
+                    |--------------------------------------------------------------------------
+                    */
 
                     if (
                         response.status === 401 ||
@@ -1976,7 +2148,7 @@ document.addEventListener(
 
 
                         window.location.href =
-                            "{{ route('admin.login') }}";
+                            '/admin/login';
 
 
                         return;
@@ -1984,6 +2156,12 @@ document.addEventListener(
                     }
 
 
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | REQUEST FAILED
+                    |--------------------------------------------------------------------------
+                    */
 
                     if (!response.ok) {
 
@@ -1996,6 +2174,12 @@ document.addEventListener(
                     }
 
 
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | REFRESH MANAGE BLOGS
+                    |--------------------------------------------------------------------------
+                    */
 
                     await loadAdminContent(
 
